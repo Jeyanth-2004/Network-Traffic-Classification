@@ -1,0 +1,67 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import cross_val_score, KFold
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import LabelEncoder
+
+# Read the dataset
+df = pd.read_csv("/kaggle/input/allflowmeter-hikari2021/ALLFLOWMETER_HIKARI2021.csv")
+
+# Apply label encoding to categorical columns
+label_encoder = LabelEncoder()
+for column in df.columns:
+    if df[column].dtype == 'object':
+        df[column] = label_encoder.fit_transform(df[column])
+
+# Prepare features and target variables
+X = df.drop(['Label', 'traffic_category'], axis=1)
+y_label = df['Label']
+y_traffic = df['traffic_category']
+
+# Define classifiers
+classifiers = {
+    'Random Forest': RandomForestClassifier(),
+    'Decision Tree': DecisionTreeClassifier(random_state=42),
+    'XGBoost': XGBClassifier()
+}
+
+# Iterate over classifiers
+for name, clf in classifiers.items():
+    print(f"Results for {name}:")
+    kf_label = KFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores_label = cross_val_score(clf, X, y_label, cv=kf_label)
+    mean_accuracy_label = np.mean(cv_scores_label)
+    clf.fit(X, y_label)
+    y_pred_label = clf.predict(X)
+    accuracy_label = accuracy_score(y_label, y_pred_label)
+    report_label = classification_report(y_label, y_pred_label)
+    print("Results for 'Label' column:")
+    print("Cross-Validation Scores:")
+    print(cv_scores_label)
+    print(f"Mean Accuracy: {mean_accuracy_label}")
+    print(f"Accuracy: {accuracy_label}")
+    print("Classification Report:")
+    print(report_label)
+
+    df_predicted_label_1 = df[y_pred_label == 1].copy()
+    X_traffic = df_predicted_label_1.drop(['Label', 'traffic_category'], axis=1)
+    y_traffic_label = df_predicted_label_1['traffic_category']
+    label_encoder_traffic = LabelEncoder()
+    y_traffic_label_encoded = label_encoder_traffic.fit_transform(y_traffic_label)
+    kf_traffic = KFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores_traffic = cross_val_score(clf, X_traffic, y_traffic_label_encoded, cv=kf_traffic)
+    mean_accuracy_traffic = np.mean(cv_scores_traffic)
+    clf.fit(X_traffic, y_traffic_label_encoded)
+    y_pred_traffic = clf.predict(X_traffic)
+    accuracy_traffic = accuracy_score(y_traffic_label_encoded, y_pred_traffic)
+    report_traffic = classification_report(y_traffic_label_encoded, y_pred_traffic)
+    print("\nResults for 'traffic_category' column after Label prediction is 1:")
+    print("Cross-Validation Scores:")
+    print(cv_scores_traffic)
+    print(f"Mean Accuracy: {mean_accuracy_traffic}")
+    print(f"Accuracy: {accuracy_traffic}")
+    print("Classification Report:")
+    print(report_traffic) 
